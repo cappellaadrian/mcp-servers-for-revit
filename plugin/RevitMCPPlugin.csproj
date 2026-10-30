@@ -80,6 +80,8 @@
     <Target Name="CopyFiles" AfterTargets="CoreBuild">
         <ItemGroup>
             <RootItem Include="$(ProjectDir)*.addin"/>
+            <!-- Revara fork: the MIT notice travels with every copy of the add-in. -->
+            <RootItem Include="$(ProjectDir)..\LICENSE;$(ProjectDir)..\NOTICE"/>
             <AddinItem Include="$(TargetDir)*.dll"/>
             <AddinItem Include="$(TargetDir)*.pdb"/>
         </ItemGroup>

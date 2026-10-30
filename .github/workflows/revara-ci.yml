@@ -1,0 +1,62 @@
+# Revara fork: builds the Revit 2025 add-in and tests the message framer on every push and pull request
+# to the revara branch. GitHub-hosted runners only. The upstream release workflow (npm publish on v* tags)
+# is removed in this branch, and this fork never pushes v* tags.
+name: revara-ci
+
+on:
+  push:
+    branches: [revara]
+  pull_request:
+    branches: [main, revara]
+
+permissions:
+  contents: read
+
+jobs:
+  framer-tests:
+    name: MessageFramer tests (no Revit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: dotnet test
+        working-directory: tests/framer
+        run: dotnet test
+
+  build-r25:
+    name: Build Revit 2025 add-in (Release R25)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: dotnet build
+        run: dotnet build mcp-servers-for-revit.sln -c "Release R25"
+      - name: Check the add-in layout and version
+        shell: pwsh
+        run: |
+          $root = "plugin/bin/AddIn 2025 Release R25"
+          Get-ChildItem -Recurse $root | ForEach-Object { $_.FullName.Substring((Resolve-Path $root).Path.Length) }
+          $required = @(
+            "mcp-servers-for-revit.addin",
+            "LICENSE",
+            "NOTICE",
+            "revit_mcp_plugin/RevitMCPPlugin.dll",
+            "revit_mcp_plugin/Commands/RevitMCPCommandSet/command.json",
+            "revit_mcp_plugin/Commands/RevitMCPCommandSet/2025/RevitMCPCommandSet.dll"
+          )
+          $missing = $required | Where-Object { -not (Test-Path (Join-Path $root $_)) }
+          if ($missing) { Write-Error "Missing from the add-in: $($missing -join ', ')"; exit 1 }
+          $version = (Get-Item (Join-Path $root "revit_mcp_plugin/RevitMCPPlugin.dll")).VersionInfo.ProductVersion
+          Write-Host "RevitMCPPlugin.dll ProductVersion: $version"
+          if (-not $version.StartsWith("1.0.0-revara.1")) { Write-Error "Unexpected version $version"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcp-servers-for-revit-revara-Revit2025
+          path: plugin/bin/AddIn 2025 Release R25/
+          if-no-files-found: error

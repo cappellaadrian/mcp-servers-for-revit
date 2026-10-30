@@ -1,0 +1,15 @@
+mcp-servers-for-revit, Revara fork (branch revara)
+
+This fork is based on mcp-servers-for-revit (https://github.com/mcp-servers-for-revit/mcp-servers-for-revit),
+main at 86cf705, under the MIT License in LICENSE.
+
+Changes in this fork, all in the plugin's socket layer:
+- plugin/Core/MessageFramer.cs is taken unchanged from mcp-servers-for-revit pull request #60 by
+  Omar-Elwazeery (commit a4ada37, https://github.com/mcp-servers-for-revit/mcp-servers-for-revit/pull/60),
+  MIT License. It joins socket reads into whole JSON messages, so requests longer than 8192 bytes work.
+- plugin/Core/SocketService.cs, also from that pull request: uses the framer, listens on loopback only,
+  closes a connection that sends something that is not JSON, and writes one response per line.
+  The session token of that pull request is not included.
+- plugin/Properties/AssemblyInfo.cs: file version 1.0.0.1, informational version 1.0.0-revara.1.
+
+No command was added or changed. Only Revit 2025 (Release R25) is built and tested in this fork.
