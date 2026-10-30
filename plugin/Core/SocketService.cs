@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -16,6 +17,10 @@ namespace revit_mcp_plugin.Core
 {
     public class SocketService
     {
+        // Revara fork: from mcp-servers-for-revit PR #60 (a4ada37). Far larger than any real request;
+        // it only stops a misbehaving client from exhausting memory.
+        private const int MaxMessageLength = 16 * 1024 * 1024;
+
         private static SocketService _instance;
         private TcpListener _listener;
         private Thread _listenerThread;
@@ -102,7 +107,9 @@ namespace revit_mcp_plugin.Core
             try
             {
                 _isRunning = true;
-                _listener = new TcpListener(IPAddress.Any, _port);
+                // Revara fork, from PR #60: loopback only, because send_code_to_revit runs arbitrary C#
+                // and nothing on the network may reach this port.
+                _listener = new TcpListener(IPAddress.Loopback, _port);
                 _listener.Start();
 
                 _listenerThread = new Thread(ListenForClients)
@@ -114,6 +121,13 @@ namespace revit_mcp_plugin.Core
             catch (Exception)
             {
                 _isRunning = false;
+                _listener?.Stop();
+                _listener = null;
+
+                // Revara fork, from PR #60: let the ribbon button report the failure (e.g. the port is taken by
+                // another Revit) instead of claiming "Open Server". MCPServiceConnection catches it and returns
+                // Result.Failed with the message.
+                throw;
             }
         }
 
@@ -172,6 +186,9 @@ namespace revit_mcp_plugin.Core
             try
             {
                 byte[] buffer = new byte[8192];
+                // Revara fork, from PR #60: one read is not one message. The framer joins reads until a
+                // message is complete, so requests longer than the buffer arrive whole.
+                var framer = new MessageFramer(MaxMessageLength);
 
                 while (_isRunning && tcpClient.Connected)
                 {
@@ -197,15 +214,32 @@ namespace revit_mcp_plugin.Core
                         break;
                     }
 
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    System.Diagnostics.Trace.WriteLine($"收到消息: {message}\nReceived message: {message}");
+                    List<string> messages;
+                    try
+                    {
+                        messages = framer.Append(buffer, bytesRead);
+                    }
+                    catch (InvalidDataException ex)
+                    {
+                        WriteResponse(stream, CreateErrorResponse(null, JsonRPCErrorCodes.InvalidRequest, ex.Message));
+                        break;
+                    }
 
-                    string response = ProcessJsonRPCRequest(message);
+                    foreach (string message in messages)
+                    {
+                        System.Diagnostics.Trace.WriteLine($"收到消息: {message}\nReceived message: {message}");
 
-                    // 发送响应
-                    // Send response.
-                    byte[] responseData = Encoding.UTF8.GetBytes(response);
-                    stream.Write(responseData, 0, responseData.Length);
+                        string response = ProcessJsonRPCRequest(message, out bool closeConnection);
+
+                        // 发送响应
+                        // Send response.
+                        WriteResponse(stream, response);
+
+                        if (closeConnection)
+                        {
+                            return;
+                        }
+                    }
                 }
             }
             catch(Exception)
@@ -218,8 +252,9 @@ namespace revit_mcp_plugin.Core
             }
         }
 
-        private string ProcessJsonRPCRequest(string requestJson)
+        private string ProcessJsonRPCRequest(string requestJson, out bool closeConnection)
         {
+            closeConnection = false;
             JsonRPCRequest request;
 
             try
@@ -264,6 +299,10 @@ namespace revit_mcp_plugin.Core
             {
                 // JSON解析错误
                 // JSON parsing error.
+
+                // Revara fork, from PR #60: anything that isn't JSON, such as an HTTP request a web page
+                // sent to this port, ends the connection before the rest of that read is processed.
+                closeConnection = true;
                 return CreateErrorResponse(
                     null,
                     JsonRPCErrorCodes.ParseError,
@@ -307,6 +346,15 @@ namespace revit_mcp_plugin.Core
             };
 
             return response.ToJson();
+        }
+
+        private static void WriteResponse(NetworkStream stream, string response)
+        {
+            // Revara fork, from PR #60: one response per line. JSON escapes line breaks inside strings,
+            // so any raw line break is formatting and can be dropped to keep the response on one line.
+            string line = response.Replace("\r", "").Replace("\n", "") + "\n";
+            byte[] responseData = Encoding.UTF8.GetBytes(line);
+            stream.Write(responseData, 0, responseData.Length);
         }
     }
 }
