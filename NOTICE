@@ -8,7 +8,8 @@ Changes in this fork, all in the plugin's socket layer:
   Omar-Elwazeery (commit a4ada37, https://github.com/mcp-servers-for-revit/mcp-servers-for-revit/pull/60),
   MIT License. It joins socket reads into whole JSON messages, so requests longer than 8192 bytes work.
 - plugin/Core/SocketService.cs, also from that pull request: uses the framer, listens on loopback only,
-  closes a connection that sends something that is not JSON, and writes one response per line.
+  closes a connection that sends something that is not JSON, writes one response per line, and reports a
+  listener that fails to start (for example, the port taken by another Revit) instead of claiming success.
   The session token of that pull request is not included.
 - plugin/Properties/AssemblyInfo.cs: file version 1.0.0.1, informational version 1.0.0-revara.1.
 

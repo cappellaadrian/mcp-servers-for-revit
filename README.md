@@ -16,6 +16,7 @@ This branch is the Revit add-in that [Revara](https://github.com/cappellaadrian)
 - **Requests longer than 8 KB.** Upstream reads each request with one 8192-byte `Read` and parses that read as a whole message, so a longer request fails with "Invalid JSON". This branch uses `MessageFramer` from upstream pull request [#60](https://github.com/mcp-servers-for-revit/mcp-servers-for-revit/pull/60) by Omar-Elwazeery (commit `a4ada37`): it joins reads into whole messages, one per line, and still accepts a single JSON object with no line break, as older clients send.
 - **Loopback only.** The listener binds to `127.0.0.1`, because `send_code_to_revit` runs arbitrary C#. A connection that sends something that is not JSON is closed.
 - **One response per line.**
+- **A listener that fails to start is reported.** With two Revit sessions, the second one shows the error instead of "Open Server".
 - **Version.** `RevitMCPPlugin.dll` file version `1.0.0.1`, product version `1.0.0-revara.1`.
 
 Not included: the session token of #60, its other fixes, and any new or changed command. Only Revit 2025 (`Release R25`) is built and tested here, by `.github/workflows/revara-ci.yml`, whose artifact is the add-in folder to copy into `%AppData%\Autodesk\Revit\Addins\2025\`. The upstream release workflow is removed in this branch. Credits and license: see `NOTICE` and `LICENSE`.

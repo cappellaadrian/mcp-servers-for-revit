@@ -121,6 +121,13 @@ namespace revit_mcp_plugin.Core
             catch (Exception)
             {
                 _isRunning = false;
+                _listener?.Stop();
+                _listener = null;
+
+                // Revara fork, from PR #60: let the ribbon button report the failure (e.g. the port is taken by
+                // another Revit) instead of claiming "Open Server". MCPServiceConnection catches it and returns
+                // Result.Failed with the message.
+                throw;
             }
         }
 
