@@ -18,9 +18,16 @@ namespace revit_mcp_plugin.Configuration
         /// <summary>
         /// <para>socket服务端口</para>
         /// <para>Socket service port.</para>
+        /// <para>Revara fork: not used. The service binds the first free port of 38080 to 38089.</para>
         /// </summary>
         [JsonProperty("port")]
         public int Port { get; set; } = 8080;
+
+        /// <summary>
+        /// <para>Revara fork: start the service when Revit finishes starting. The ribbon button still toggles it.</para>
+        /// </summary>
+        [JsonProperty("autoStart")]
+        public bool AutoStart { get; set; } = true;
 
     }
 }

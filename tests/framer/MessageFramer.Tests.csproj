@@ -5,9 +5,15 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- The plugin files compiled below also build for net48 (Revit 2020 to 2024) with C# 7.3. -->
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\plugin\Core\MessageFramer.cs" Link="MessageFramer.cs" />
+    <Compile Include="..\..\plugin\Core\SessionToken.cs" Link="SessionToken.cs" />
+    <Compile Include="..\..\plugin\Core\ConnectionInfoFile.cs" Link="ConnectionInfoFile.cs" />
+    <Compile Include="..\..\plugin\Core\PortBinder.cs" Link="PortBinder.cs" />
+    <Compile Include="..\..\plugin\Core\BridgeProtocol.cs" Link="BridgeProtocol.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Net;
+using System.Linq;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Autodesk.Revit.UI;
@@ -25,7 +27,11 @@ namespace revit_mcp_plugin.Core
         private TcpListener _listener;
         private Thread _listenerThread;
         private bool _isRunning;
-        private int _port = 8080;
+        // Revara fork: the port is whichever one of 38080 to 38089 PortBinder bound; the connection file tells the client.
+        private int _port;
+        private string _token;
+        private readonly Stopwatch _uptime = new Stopwatch();
+        private string _revitYear;
         private UIApplication _uiApp;
         private ICommandRegistry _commandRegistry;
         private ILogger _logger;
@@ -60,6 +66,7 @@ namespace revit_mcp_plugin.Core
         public void Initialize(UIApplication uiApp)
         {
             _uiApp = uiApp;
+            _revitYear = _uiApp.Application.VersionNumber;
 
             // 初始化事件管理器
             // Initialize ExternalEventManager
@@ -83,13 +90,7 @@ namespace revit_mcp_plugin.Core
             configManager.LoadConfiguration();
             
 
-            //// 从配置中读取服务端口
-            //// Read the service port from the configuration.
-            //if (configManager.Config.Settings.Port > 0)
-            //{
-            //    _port = configManager.Config.Settings.Port;
-            //}
-            _port = 8080; // 固定端口号 - Hard-wired port number.
+            // Revara fork: ServiceSettings.Port is not used; the port comes from PortBinder.BindFirstFree in Start().
 
             // 加载命令
             // Load command.
@@ -97,7 +98,7 @@ namespace revit_mcp_plugin.Core
                 _commandRegistry, _logger, configManager, _uiApp);
             commandManager.LoadCommands();
 
-            _logger.Info($"Socket service initialized on port {_port}");
+            _logger.Info("Socket service initialized");
         }
 
         public void Start()
@@ -109,8 +110,25 @@ namespace revit_mcp_plugin.Core
                 _isRunning = true;
                 // Revara fork, from PR #60: loopback only, because send_code_to_revit runs arbitrary C#
                 // and nothing on the network may reach this port.
-                _listener = new TcpListener(IPAddress.Loopback, _port);
-                _listener.Start();
+                _listener = PortBinder.BindFirstFree(38080, 38089);
+                _port = ((System.Net.IPEndPoint)_listener.LocalEndpoint).Port;
+                _token = SessionToken.Generate();
+                _uptime.Restart();
+
+                // The file is written only after the bind, so a client never finds a file without a listener.
+                try
+                {
+                    ConnectionInfoFile.Write(ConnectionInfoFile.DefaultPath, _port, _token);
+                }
+                catch (Exception ex)
+                {
+                    _listener.Stop();
+                    _listener = null;
+                    _isRunning = false;
+                    _token = null;
+                    throw new InvalidOperationException(
+                        "Revara MCP could not write its connection file: " + ex.Message);
+                }
 
                 _listenerThread = new Thread(ListenForClients)
                 {
@@ -138,6 +156,9 @@ namespace revit_mcp_plugin.Core
             try
             {
                 _isRunning = false;
+
+                ConnectionInfoFile.DeleteIfOwned(ConnectionInfoFile.DefaultPath, _token);
+                _token = null;
 
                 _listener?.Stop();
                 _listener = null;
@@ -227,8 +248,6 @@ namespace revit_mcp_plugin.Core
 
                     foreach (string message in messages)
                     {
-                        System.Diagnostics.Trace.WriteLine($"收到消息: {message}\nReceived message: {message}");
-
                         string response = ProcessJsonRPCRequest(message, out bool closeConnection);
 
                         // 发送响应
@@ -255,24 +274,29 @@ namespace revit_mcp_plugin.Core
         private string ProcessJsonRPCRequest(string requestJson, out bool closeConnection)
         {
             closeConnection = false;
-            JsonRPCRequest request;
+            BridgeProtocol.Outcome outcome = null;
 
             try
             {
-                // 解析JSON-RPC请求
-                // Parse JSON-RPC requests.
-                request = JsonConvert.DeserializeObject<JsonRPCRequest>(requestJson);
+                // Revara fork: the token check, request validation and the get_version and health methods are
+                // decided by BridgeProtocol; only the rest reaches the command registry.
+                string revitYear = _revitYear;
+                outcome = BridgeProtocol.Handle(
+                    requestJson,
+                    _token,
+                    () => BridgeProtocol.VersionResult(ReadInformationalVersion(), revitYear),
+                    () => BridgeProtocol.HealthResult(
+                        _uptime.ElapsedMilliseconds,
+                        (_commandRegistry as RevitCommandRegistry)?.GetRegisteredCommands().Count() ?? 0));
 
-                // 验证请求格式是否有效
-                // Verify that the request format is valid.
-                if (request == null || !request.IsValid())
+                if (outcome.Response != null)
                 {
-                    return CreateErrorResponse(
-                        null,
-                        JsonRPCErrorCodes.InvalidRequest,
-                        "Invalid JSON-RPC request"
-                    );
+                    closeConnection = outcome.Close;
+                    return outcome.Response;
                 }
+
+                // On this path the SDK returns the id as a string; the client sends string ids.
+                JsonRPCRequest request = outcome.Request.ToObject<JsonRPCRequest>();
 
                 // 查找命令
                 // Search for the command in the registry.
@@ -295,30 +319,23 @@ namespace revit_mcp_plugin.Core
                     return CreateErrorResponse(request.Id, JsonRPCErrorCodes.InternalError, ex.Message);
                 }
             }
-            catch (JsonException)
-            {
-                // JSON解析错误
-                // JSON parsing error.
-
-                // Revara fork, from PR #60: anything that isn't JSON, such as an HTTP request a web page
-                // sent to this port, ends the connection before the rest of that read is processed.
-                closeConnection = true;
-                return CreateErrorResponse(
-                    null,
-                    JsonRPCErrorCodes.ParseError,
-                    "Invalid JSON"
-                );
-            }
             catch (Exception ex)
             {
                 // 处理请求时的其他错误
                 // Catch other errors produced when processing requests.
+                // The id is the request's own when the line parsed (a JSON null gives C# null).
                 return CreateErrorResponse(
-                    null,
+                    (outcome?.Id as JValue)?.Value?.ToString(),
                     JsonRPCErrorCodes.InternalError,
                     $"Internal error: {ex.Message}"
                 );
             }
+        }
+
+        private static string ReadInformationalVersion()
+        {
+            var attribute = typeof(SocketService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            return attribute?.InformationalVersion;
         }
 
         private string CreateSuccessResponse(string id, object result)

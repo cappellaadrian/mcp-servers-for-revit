@@ -10,8 +10,20 @@ Changes in this fork, in the plugin's socket layer and, on branch revara-install
 - plugin/Core/SocketService.cs, also from that pull request: uses the framer, listens on loopback only,
   closes a connection that sends something that is not JSON, writes one response per line, and reports a
   listener that fails to start (for example, the port taken by another Revit) instead of claiming success.
-  The session token of that pull request is not included.
+  On branch revara, the session token of that pull request is not included; on branch revara-installer it is (see below).
 - plugin/Properties/AssemblyInfo.cs: file version 1.0.0.1, informational version 1.0.0-revara.1.
 - Revit 2027 (Release R27, net10) configurations and a CI matrix for Revit 2025, 2026 and 2027, on branch revara-installer; file version 1.0.0.2, informational version 1.0.0-revara.2.
+- plugin/Core/ConnectionInfoFile.cs and the session token (SessionToken.cs, the auth check in BridgeProtocol.cs)
+  are adapted from that pull request (commit a4ada37): the plugin writes its port and a per-session token to
+  %LOCALAPPDATA%\Revara\connection.json and rejects requests without that token. The file is written atomically,
+  and only after the listener has bound.
+- Revara identity on branch revara-installer: its own add-in file (revara-mcp.addin), ClientId, VendorId,
+  folder (revara_mcp), ribbon panel (Revara MCP) and ports (38080 to 38089). The assembly names stay
+  RevitMCPPlugin and RevitMCPCommandSet. The upstream server in server/ still connects to port 8080 without a
+  token, so it does not work with this plugin.
+- get_version and health methods, error responses that carry the request id, and an autoStart setting;
+  file version 1.0.0.3, informational version 1.0.0-revara.3.
+- commandset/Utils/GeometryUtils.cs: on Revit 2027, FindIntersection uses Curve.Intersect(Curve,
+  CurveIntersectResultOption.Detailed), because the overload with an out parameter no longer exists there.
 
-No command was added or changed. On branch revara, only Revit 2025 (Release R25) is built and tested. On branch revara-installer, Revit 2025 and 2026 (net8) and Revit 2027 (net10) are built in CI and not yet tested in Revit.
+No command was added or changed. The socket layer answers two methods of its own, get_version and health. On branch revara, only Revit 2025 (Release R25) is built and tested. On branch revara-installer, Revit 2025 and 2026 (net8) and Revit 2027 (net10) are built in CI and not yet tested in Revit.

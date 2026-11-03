@@ -209,7 +209,14 @@ public static class GeometryUtils
             return results.get_Item(0).XYZPoint;
         return null;
 #else
-        throw new NotSupportedException("Not available in Revit 2027");
+        var r = line1.Intersect(line2, CurveIntersectResultOption.Detailed);
+        if (r.Result == SetComparisonResult.Overlap)
+        {
+            var o = r.GetOverlaps();
+            if (o.Count > 0)
+                return o[0].Point;
+        }
+        return null;
 #endif
     }
 

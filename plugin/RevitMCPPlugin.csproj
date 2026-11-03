@@ -87,7 +87,7 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     </ItemGroup>
     <ItemGroup>
-        <None Update="mcp-servers-for-revit.addin">
+        <None Update="revara-mcp.addin">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
@@ -102,7 +102,8 @@
 
         <PropertyGroup>
             <RootDir>bin\AddIn $(RevitVersion) $(Configuration)\</RootDir>
-            <AddinDir>$(RootDir)$(RootNameSpace)\</AddinDir>
+            <RevaraAddinFolder>revara_mcp</RevaraAddinFolder>
+            <AddinDir>$(RootDir)$(RevaraAddinFolder)\</AddinDir>
         </PropertyGroup>
 
         <Copy SourceFiles="@(RootItem)" DestinationFolder="$(RootDir)"/>

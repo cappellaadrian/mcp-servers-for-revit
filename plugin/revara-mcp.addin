@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Revara MCP</Name>
+    <Assembly>revara_mcp/RevitMCPPlugin.dll</Assembly>
+    <FullClassName>revit_mcp_plugin.Core.Application</FullClassName>
+    <ClientId>BBBF91F5-174C-47CA-B26A-B6A6826923B7</ClientId>
+    <VendorId>Revara</VendorId>
+    <VendorDescription>https://github.com/cappellaadrian/mcp-servers-for-revit</VendorDescription>
+  </AddIn>
+</RevitAddIns>

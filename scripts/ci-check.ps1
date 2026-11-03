@@ -5,9 +5,9 @@ param(
 )
 
 $rows = @{
-    '2025' = @{ Root = 'plugin/bin/AddIn 2025 Release R25'; ExpectedVersion = '1.0.0-revara.2'; ExpectedTfm = '.NETCoreApp,Version=v8.0' }
-    '2026' = @{ Root = 'plugin/bin/AddIn 2026 Release R26'; ExpectedVersion = '1.0.0-revara.2'; ExpectedTfm = '.NETCoreApp,Version=v8.0' }
-    '2027' = @{ Root = 'plugin/bin/AddIn 2027 Release R27'; ExpectedVersion = '1.0.0-revara.2'; ExpectedTfm = '.NETCoreApp,Version=v10.0' }
+    '2025' = @{ Root = 'plugin/bin/AddIn 2025 Release R25'; ExpectedVersion = '1.0.0-revara.3'; ExpectedTfm = '.NETCoreApp,Version=v8.0' }
+    '2026' = @{ Root = 'plugin/bin/AddIn 2026 Release R26'; ExpectedVersion = '1.0.0-revara.3'; ExpectedTfm = '.NETCoreApp,Version=v8.0' }
+    '2027' = @{ Root = 'plugin/bin/AddIn 2027 Release R27'; ExpectedVersion = '1.0.0-revara.3'; ExpectedTfm = '.NETCoreApp,Version=v10.0' }
 }
 
 if (-not $rows.ContainsKey($Year)) {
