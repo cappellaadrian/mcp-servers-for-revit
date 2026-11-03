@@ -219,11 +219,11 @@ using Xunit.Abstractions;
             string path = Path.Combine(_root, "connection.json");
             var errors = new System.Collections.Concurrent.ConcurrentBag<Exception>();
 
-            Action<int, string> writer = (port, token) =>
+            Action<int, string> writer = (writerPort, writerToken) =>
             {
                 try
                 {
-                    for (int i = 0; i < 50; i++) ConnectionInfoFile.Write(path, port, token);
+                    for (int i = 0; i < 50; i++) ConnectionInfoFile.Write(path, writerPort, writerToken);
                 }
                 catch (Exception ex)
                 {
