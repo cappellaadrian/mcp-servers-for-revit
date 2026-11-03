@@ -1,9 +1,9 @@
-mcp-servers-for-revit, Revara fork (branch revara)
+mcp-servers-for-revit, Revara fork (branches revara and revara-installer)
 
 This fork is based on mcp-servers-for-revit (https://github.com/mcp-servers-for-revit/mcp-servers-for-revit),
 main at 86cf705, under the MIT License in LICENSE.
 
-Changes in this fork, all in the plugin's socket layer:
+Changes in this fork, in the plugin's socket layer and, on branch revara-installer, in the build configuration:
 - plugin/Core/MessageFramer.cs is taken unchanged from mcp-servers-for-revit pull request #60 by
   Omar-Elwazeery (commit a4ada37, https://github.com/mcp-servers-for-revit/mcp-servers-for-revit/pull/60),
   MIT License. It joins socket reads into whole JSON messages, so requests longer than 8192 bytes work.
@@ -12,5 +12,6 @@ Changes in this fork, all in the plugin's socket layer:
   listener that fails to start (for example, the port taken by another Revit) instead of claiming success.
   The session token of that pull request is not included.
 - plugin/Properties/AssemblyInfo.cs: file version 1.0.0.1, informational version 1.0.0-revara.1.
+- Revit 2027 (Release R27, net10) configurations and a CI matrix for Revit 2025, 2026 and 2027, on branch revara-installer; file version 1.0.0.2, informational version 1.0.0-revara.2.
 
-No command was added or changed. Only Revit 2025 (Release R25) is built and tested in this fork.
+No command was added or changed. On branch revara, only Revit 2025 (Release R25) is built and tested. On branch revara-installer, Revit 2025 and 2026 (net8) and Revit 2027 (net10) are built in CI and not yet tested in Revit.
