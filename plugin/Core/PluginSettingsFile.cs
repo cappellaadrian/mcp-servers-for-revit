@@ -26,9 +26,11 @@ namespace revit_mcp_plugin.Core
         }
 
         /// <summary>
-        /// Whether the service starts by itself. File absent = true. An object without autoStart = true. An object with
-        /// a boolean autoStart = that value. Anything else (unreadable, not JSON, not an object, autoStart not a
-        /// boolean) = false: a user who turned it off must never see it turn back on by itself. Never throws.
+        /// Whether the service starts by itself. File absent = true. An object without autoStart = true. Every member
+        /// named autoStart, whatever its letter case (the old setting was written as AutoStart), must be a boolean
+        /// true for the answer to be true. Anything else (unreadable, not JSON, not an object, any autoStart member
+        /// not a boolean, any autoStart member false) = false: a user who turned it off must never see it turn back
+        /// on by itself. Never throws.
         /// </summary>
         public static bool ReadAutoStart(string path)
         {
@@ -40,10 +42,14 @@ namespace revit_mcp_plugin.Core
                 JObject obj = root as JObject;
                 if (obj == null) return false;
 
-                JToken member;
-                if (!obj.TryGetValue("autoStart", out member)) return true;
-                if (member == null || member.Type != JTokenType.Boolean) return false;
-                return (bool)member;
+                foreach (JProperty property in obj.Properties())
+                {
+                    if (!IsAutoStartName(property.Name)) continue;
+                    JToken member = property.Value;
+                    if (member == null || member.Type != JTokenType.Boolean) return false;
+                    if (!(bool)member) return false;
+                }
+                return true;
             }
             catch (Exception)
             {
@@ -52,8 +58,9 @@ namespace revit_mcp_plugin.Core
         }
 
         /// <summary>
-        /// Sets autoStart and keeps every other member of the existing object (a file that does not parse as an
-        /// object starts again from {}). Written atomically. Any write failure throws.
+        /// Sets autoStart, dropping any member whose name differs from it only by letter case, and keeps every other
+        /// member of the existing object (a file that does not parse as an object starts again from {}). Written
+        /// atomically. Any write failure throws.
         /// </summary>
         public static void WriteAutoStart(string path, bool value)
         {
@@ -71,8 +78,20 @@ namespace revit_mcp_plugin.Core
             }
             if (obj == null) obj = new JObject();
 
+            var variants = new System.Collections.Generic.List<string>();
+            foreach (JProperty property in obj.Properties())
+            {
+                if (IsAutoStartName(property.Name)) variants.Add(property.Name);
+            }
+            foreach (string name in variants) obj.Remove(name);
+
             obj["autoStart"] = value;
             AtomicFile.WriteUtf8NoBom(path, obj.ToString(Formatting.None));
+        }
+
+        private static bool IsAutoStartName(string name)
+        {
+            return string.Equals(name, "autoStart", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

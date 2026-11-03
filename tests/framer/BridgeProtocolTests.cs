@@ -174,6 +174,13 @@ using Xunit.Abstractions;
                 new { Text = "{\"autoStart\":\"false\"}", Expected = false },
                 new { Text = "{\"autoStart\":0}", Expected = false },
                 new { Text = "", Expected = false },
+                new { Text = "{\"AutoStart\":false}", Expected = false },
+                new { Text = "{\"AUTOSTART\":false}", Expected = false },
+                new { Text = "{\"AutoStart\":true}", Expected = true },
+                new { Text = "{\"autoStart\":true,\"AutoStart\":false}", Expected = false },
+                new { Text = "{\"autoStart\":false,\"AutoStart\":true}", Expected = false },
+                new { Text = "{\"AutoStart\":\"no\"}", Expected = false },
+                new { Text = "{\"autostartx\":false}", Expected = true },
             };
             foreach (var row in rows)
             {
@@ -202,6 +209,16 @@ using Xunit.Abstractions;
             Assert.Equal(JTokenType.Boolean, obj["autoStart"].Type);
             Assert.False((bool)obj["autoStart"]);
             Assert.Empty(Directory.GetFiles(folder, "*.tmp"));
+
+            File.WriteAllText(path, "{\"AutoStart\":true,\"keep\":\"x\"}");
+            PluginSettingsFile.WriteAutoStart(path, false);
+
+            JObject cased = JObject.Parse(File.ReadAllText(path));
+            Assert.Equal(2, cased.Count);
+            Assert.Equal("x", (string)cased["keep"]);
+            Assert.Equal(JTokenType.Boolean, cased["autoStart"].Type);
+            Assert.False((bool)cased["autoStart"]);
+            Assert.False(PluginSettingsFile.ReadAutoStart(path));
         }
 
         [Fact]
