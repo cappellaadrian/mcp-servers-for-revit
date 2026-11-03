@@ -39,10 +39,7 @@ namespace revit_mcp_plugin.Core
                     // A bare "Application" here is this plugin's own class, so the Revit type is written in full.
                     var uiApp = new UIApplication(sender as Autodesk.Revit.ApplicationServices.Application);
 
-                    var configManager = new ConfigurationManager(logger);
-                    configManager.LoadConfiguration();
-                    bool autoStart = configManager.Config == null || configManager.Config.Settings == null
-                        || configManager.Config.Settings.AutoStart;
+                    bool autoStart = PluginSettingsFile.ReadAutoStart(PluginSettingsFile.DefaultPath);
 
                     if (autoStart && !SocketService.Instance.IsRunning)
                     {

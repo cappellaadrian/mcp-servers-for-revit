@@ -21,7 +21,7 @@ Changes in this fork, in the plugin's socket layer and, on branch revara-install
   folder (revara_mcp), ribbon panel (Revara MCP) and ports (38080 to 38089). The assembly names stay
   RevitMCPPlugin and RevitMCPCommandSet. The upstream server in server/ still connects to port 8080 without a
   token, so it does not work with this plugin.
-- get_version and health methods, error responses that carry the request id, and an autoStart setting;
+- get_version and health methods, error responses that carry the request id, and an autoStart setting in %LOCALAPPDATA%\Revara\plugin-settings.json (off when that file says false or cannot be read);
   file version 1.0.0.3, informational version 1.0.0-revara.3.
 - commandset/Utils/GeometryUtils.cs: on Revit 2027, FindIntersection uses Curve.Intersect(Curve,
   CurveIntersectResultOption.Detailed), because the overload with an out parameter no longer exists there.

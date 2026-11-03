@@ -24,37 +24,17 @@ namespace revit_mcp_plugin.Core
         }
 
         /// <summary>
-        /// Writes {"port":..,"token":".."} as UTF-8 without BOM to a temporary file next to path, then moves it over
+        /// Writes {"port":..,"token":".."} as UTF-8 without BOM to a uniquely named temporary file next to path, then moves it over
         /// path, so a reader never sees a partial file. Any failure throws.
         /// </summary>
         public static void Write(string path, int port, string token)
         {
-            string folder = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
-
             var obj = new JObject();
             obj["port"] = port;
             obj["token"] = token;
             string json = obj.ToString(Newtonsoft.Json.Formatting.None);
 
-            string tmp = path + ".tmp";
-            File.WriteAllBytes(tmp, new UTF8Encoding(false).GetBytes(json));
-
-#if NET
-            File.Move(tmp, path, true);
-#else
-            if (File.Exists(path))
-            {
-                File.Replace(tmp, path, null);
-            }
-            else
-            {
-                File.Move(tmp, path);
-            }
-#endif
+            AtomicFile.WriteUtf8NoBom(path, json);
         }
 
         /// <summary>

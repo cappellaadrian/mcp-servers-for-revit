@@ -22,12 +22,5 @@ namespace revit_mcp_plugin.Configuration
         /// </summary>
         [JsonProperty("port")]
         public int Port { get; set; } = 8080;
-
-        /// <summary>
-        /// <para>Revara fork: start the service when Revit finishes starting. The ribbon button still toggles it.</para>
-        /// </summary>
-        [JsonProperty("autoStart")]
-        public bool AutoStart { get; set; } = true;
-
     }
 }

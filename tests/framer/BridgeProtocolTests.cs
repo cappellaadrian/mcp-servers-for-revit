@@ -135,6 +135,122 @@ using Xunit.Abstractions;
         }
     }
 
+    public class PluginSettingsFileTests : IDisposable
+    {
+        private readonly string _root = Path.Combine(Path.GetTempPath(), "revara-" + Guid.NewGuid().ToString("N"));
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(_root)) Directory.Delete(_root, true);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static string Token(char c)
+        {
+            return new string(c, 64);
+        }
+
+        [Fact]
+        public void P8_ReadAutoStart_fails_closed_on_anything_that_is_not_a_clear_answer()
+        {
+            Directory.CreateDirectory(_root);
+            string path = Path.Combine(_root, "plugin-settings.json");
+
+            Assert.True(PluginSettingsFile.ReadAutoStart(path));
+
+            var rows = new[]
+            {
+                new { Text = "{\"autoStart\":false}", Expected = false },
+                new { Text = "{\"autoStart\":true}", Expected = true },
+                new { Text = "{}", Expected = true },
+                new { Text = "{\"other\":1}", Expected = true },
+                new { Text = "not json", Expected = false },
+                new { Text = "[1]", Expected = false },
+                new { Text = "{\"autoStart\":\"false\"}", Expected = false },
+                new { Text = "{\"autoStart\":0}", Expected = false },
+                new { Text = "", Expected = false },
+            };
+            foreach (var row in rows)
+            {
+                File.WriteAllText(path, row.Text);
+                Assert.True(row.Expected == PluginSettingsFile.ReadAutoStart(path), "content: " + row.Text);
+            }
+        }
+
+        [Fact]
+        public void P9_WriteAutoStart_creates_the_folder_keeps_other_members_and_leaves_no_tmp()
+        {
+            string folder = Path.Combine(_root, "not", "there", "yet");
+            string path = Path.Combine(folder, "plugin-settings.json");
+            Assert.False(Directory.Exists(folder));
+
+            PluginSettingsFile.WriteAutoStart(path, false);
+
+            Assert.False(PluginSettingsFile.ReadAutoStart(path));
+            Assert.Equal((byte)'{', File.ReadAllBytes(path)[0]);
+
+            File.WriteAllText(path, "{\"autoStart\":true,\"keep\":\"x\"}");
+            PluginSettingsFile.WriteAutoStart(path, false);
+
+            JObject obj = JObject.Parse(File.ReadAllText(path));
+            Assert.Equal("x", (string)obj["keep"]);
+            Assert.Equal(JTokenType.Boolean, obj["autoStart"].Type);
+            Assert.False((bool)obj["autoStart"]);
+            Assert.Empty(Directory.GetFiles(folder, "*.tmp"));
+        }
+
+        [Fact]
+        public void P10_DefaultPath_is_LocalAppData_Revara_plugin_settings_json()
+        {
+            string expected = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Revara", "plugin-settings.json");
+            Assert.Equal(expected, PluginSettingsFile.DefaultPath);
+        }
+
+        [Fact]
+        public void P11_Two_writers_on_one_path_never_mix_a_pair_and_leave_no_tmp()
+        {
+            Directory.CreateDirectory(_root);
+            string path = Path.Combine(_root, "connection.json");
+            var errors = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            Action<int, string> writer = (port, token) =>
+            {
+                try
+                {
+                    for (int i = 0; i < 50; i++) ConnectionInfoFile.Write(path, port, token);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
+            };
+
+            var a = new System.Threading.Thread(() => writer(38081, Token('A')));
+            var b = new System.Threading.Thread(() => writer(38082, Token('B')));
+            a.Start();
+            b.Start();
+            a.Join();
+            b.Join();
+
+            Assert.Empty(errors);
+
+            JObject obj = JObject.Parse(File.ReadAllText(path));
+            Assert.Equal(2, obj.Properties().Count());
+            int port = (int)obj["port"];
+            string token = (string)obj["token"];
+            Assert.True(
+                (port == 38081 && token == Token('A')) || (port == 38082 && token == Token('B')),
+                "mixed pair: " + port + " " + token);
+            Assert.Empty(Directory.GetFiles(_root, "*.tmp"));
+        }
+    }
+
     [Collection("ports")]
     public class PortBinderTests
     {

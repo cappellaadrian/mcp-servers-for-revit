@@ -11,7 +11,9 @@
   <ItemGroup>
     <Compile Include="..\..\plugin\Core\MessageFramer.cs" Link="MessageFramer.cs" />
     <Compile Include="..\..\plugin\Core\SessionToken.cs" Link="SessionToken.cs" />
+    <Compile Include="..\..\plugin\Core\AtomicFile.cs" Link="AtomicFile.cs" />
     <Compile Include="..\..\plugin\Core\ConnectionInfoFile.cs" Link="ConnectionInfoFile.cs" />
+    <Compile Include="..\..\plugin\Core\PluginSettingsFile.cs" Link="PluginSettingsFile.cs" />
     <Compile Include="..\..\plugin\Core\PortBinder.cs" Link="PortBinder.cs" />
     <Compile Include="..\..\plugin\Core\BridgeProtocol.cs" Link="BridgeProtocol.cs" />
   </ItemGroup>
